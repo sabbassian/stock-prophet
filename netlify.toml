@@ -1,6 +1,6 @@
 [build]
   command = "npm run netlify-build"
-  publish = "out"
+  publish = ".next/out"
 
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"

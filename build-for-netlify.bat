@@ -52,7 +52,7 @@ echo The application is now ready for deployment to Netlify.
 echo.
 echo You can deploy to Netlify by:
 echo 1. Pushing your code to GitHub and connecting Netlify to your repository.
-echo 2. When configuring on Netlify, set build command to "npm run netlify-build" and publish directory to "out".
+echo 2. When configuring on Netlify, set build command to "npm run netlify-build" and publish directory to ".next/out".
 echo.
 echo For more information, see the GITHUB.md file.
 pause 

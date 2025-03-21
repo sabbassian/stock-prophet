@@ -7,6 +7,8 @@ const nextConfig = {
   },
   // This is needed for Netlify deployment
   trailingSlash: true,
+  // Modern Next.js static export configuration
+  output: 'export',
   // Disable image optimization for static export
   distDir: '.next',
 }
