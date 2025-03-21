@@ -1,9 +1,7 @@
 [build]
   command = "npm run netlify-build"
-  publish = ".next/out"
+  publish = "out"
 
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs" 
+  NETLIFY_NEXT_PLUGIN_SKIP = "true" 

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "netlify-build": "next build"
+    "netlify-build": "next build && npx shx cp -r .next/out ."
   },
   "dependencies": {
     "next": "14.0.3",
@@ -28,5 +28,8 @@
     "@types/react-dom": "^18.2.15",
     "@types/node": "^20.9.1",
     "@netlify/plugin-nextjs": "^4.41.3"
+  },
+  "devDependencies": {
+    "shx": "^0.3.4"
   }
 } 
