@@ -81,7 +81,7 @@ const mockStockDetails = {
     },
     news: [
       {
-        headline: 'NVIDIA's New AI Chips Set Industry Performance Records',
+        headline: "NVIDIA's New AI Chips Set Industry Performance Records",
         source: 'Tech Review',
         time: '2h ago'
       },
