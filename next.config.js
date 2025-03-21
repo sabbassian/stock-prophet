@@ -9,8 +9,7 @@ const nextConfig = {
   trailingSlash: true,
   // Modern Next.js static export configuration
   output: 'export',
-  // Set the output directory to "out"
-  distDir: '.next',
+  // Remove distDir as it could be causing conflicts
 }
 
 module.exports = nextConfig 
