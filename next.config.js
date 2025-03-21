@@ -6,7 +6,9 @@ const nextConfig = {
     unoptimized: true, // This is needed for static export
   },
   // This is needed for Netlify deployment
-  trailingSlash: true
+  trailingSlash: true,
+  // Disable image optimization for static export
+  distDir: '.next',
 }
 
 module.exports = nextConfig 

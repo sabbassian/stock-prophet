@@ -37,8 +37,8 @@ if not exist node_modules (
 )
 
 :: Run the build command
-echo Building the application...
-call npm run build
+echo Building the application for Netlify...
+call npm run netlify-build
 if %ERRORLEVEL% NEQ 0 (
     echo Build failed.
     pause
@@ -52,7 +52,7 @@ echo The application is now ready for deployment to Netlify.
 echo.
 echo You can deploy to Netlify by:
 echo 1. Pushing your code to GitHub and connecting Netlify to your repository.
-echo 2. Configuring Netlify to use the @netlify/plugin-nextjs plugin.
+echo 2. When configuring on Netlify, set build command to "npm run netlify-build" and publish directory to "out".
 echo.
 echo For more information, see the GITHUB.md file.
 pause 
