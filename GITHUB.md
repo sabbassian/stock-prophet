@@ -46,9 +46,9 @@ If you prefer to set up Git manually:
    - Do not initialize with README, .gitignore, or license as we're importing an existing repository
    - Click "Create repository"
 
-7. Link your local repository to the GitHub repository (replace `username` with your GitHub username):
+7. Link your local repository to the GitHub repository (replace `YOUR_USERNAME` with your actual GitHub username):
    ```
-   git remote add origin https://github.com/username/stock-prophet.git
+   git remote add origin https://github.com/YOUR_USERNAME/stock-prophet.git
    ```
 
 8. Push your code to GitHub:
