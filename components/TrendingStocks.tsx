@@ -82,7 +82,24 @@ const TrendingStocks: React.FC<TrendingStocksProps> = ({ onSelect }) => {
       setTrendingStocks(combinedData);
       setLastUpdated(new Date());
     }
-  }, [stockDataResults.map(result => result.data)]);
+  // Fixed dependency array to properly track all stock data changes
+  }, [
+    ...stockDataResults.map(result => result.data),
+    ...stockDataResults.map(result => result.loading),
+    ...stockDataResults.map(result => result.error)
+  ]);
+
+  // Add debug logging to verify data updates are occurring
+  useEffect(() => {
+    console.log('TrendingStocks data updated:', new Date().toLocaleTimeString());
+    stockDataResults.forEach(result => {
+      if (result.data) {
+        console.log(`${result.data.symbol}: $${result.data.price}`);
+      }
+    });
+  }, [
+    ...stockDataResults.map(result => result.data?.price)
+  ]);
 
   // Manual refresh function
   const refreshData = () => {
@@ -201,6 +218,11 @@ const TrendingStocks: React.FC<TrendingStocksProps> = ({ onSelect }) => {
             </div>
           </div>
         ))}
+      </div>
+      
+      {/* Add note about auto-refresh */}
+      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+        <p>Stock data auto-refreshes every 20 seconds</p>
       </div>
     </div>
   );

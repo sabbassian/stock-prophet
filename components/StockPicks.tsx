@@ -97,7 +97,12 @@ const StockPicks: React.FC<StockPicksProps> = ({ onSelect }) => {
       setStockPicks(combinedData);
       setLastUpdated(new Date());
     }
-  }, [stockDataResults.map(result => result.data)]);
+  // Fixed dependency array to properly track all stock data changes
+  }, [
+    ...stockDataResults.map(result => result.data),
+    ...stockDataResults.map(result => result.loading),
+    ...stockDataResults.map(result => result.error)
+  ]);
 
   // Manual refresh function
   const refreshData = () => {
@@ -108,6 +113,18 @@ const StockPicks: React.FC<StockPicksProps> = ({ onSelect }) => {
     });
     setLastUpdated(new Date());
   };
+
+  // Add debug logging to verify data updates are occurring
+  useEffect(() => {
+    console.log('StockPicks data updated:', new Date().toLocaleTimeString());
+    stockDataResults.forEach(result => {
+      if (result.data) {
+        console.log(`${result.data.symbol}: $${result.data.price}`);
+      }
+    });
+  }, [
+    ...stockDataResults.map(result => result.data?.price)
+  ]);
 
   const getPredictionColor = (prediction: string) => {
     switch (prediction.toLowerCase()) {
@@ -220,6 +237,11 @@ const StockPicks: React.FC<StockPicksProps> = ({ onSelect }) => {
             ))}
           </tbody>
         </table>
+      </div>
+      
+      {/* Add note about auto-refresh */}
+      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+        <p>Stock data auto-refreshes every 20 seconds</p>
       </div>
     </div>
   );
