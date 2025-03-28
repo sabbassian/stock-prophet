@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { usePrediction, PredictionData } from '../hooks/usePrediction';
+import { useStockData } from '../hooks/useStockData';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
@@ -18,7 +19,15 @@ const PredictionsPage: React.FC = () => {
     }
   }, [symbol]);
   
+  // Use both stock data and prediction hooks
+  const { data: stockData, loading: stockLoading, error: stockError, refreshData: refreshStock } = useStockData(activeSymbol, 20000); // 20 second refresh
   const { prediction, loading, error, refreshPrediction } = usePrediction(activeSymbol);
+  
+  // Function to refresh all data
+  const refreshAllData = () => {
+    refreshStock();
+    refreshPrediction();
+  };
   
   // Handle search for new symbol
   const [searchInput, setSearchInput] = useState('');
@@ -33,17 +42,35 @@ const PredictionsPage: React.FC = () => {
     }
   };
   
+  // Format the last updated time
+  const formatLastUpdated = (dateString: string | Date | undefined) => {
+    if (!dateString) return 'N/A';
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    return date.toLocaleTimeString();
+  };
+  
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
           <div className="px-4 py-5 sm:px-6 border-b dark:border-gray-700">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Stock Predictions & Analysis
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-              AI-powered predictions based on technical indicators and market trends
-            </p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Stock Predictions & Analysis
+                </h1>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+                  AI-powered predictions based on technical indicators and market trends
+                </p>
+              </div>
+              <div className="mt-2 sm:mt-0 text-xs text-gray-500 dark:text-gray-400">
+                <span className="mr-2">Last updated:</span>
+                <span className="font-medium">
+                  {stockData ? formatLastUpdated(stockData.lastUpdated) : 'Loading...'}
+                </span>
+                <span className="text-xs ml-2 italic">(Auto-refreshes every 20s)</span>
+              </div>
+            </div>
           </div>
           
           {/* Symbol search */}
@@ -88,18 +115,40 @@ const PredictionsPage: React.FC = () => {
             ))}
           </div>
           
+          {/* Current stock price display */}
+          {stockData && !stockLoading && (
+            <div className="px-4 py-4 sm:px-6 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">{stockData.name}</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{activeSymbol}</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white">${stockData.price.toFixed(2)}</div>
+                  <div className={`text-sm font-medium ${
+                    stockData.change >= 0 
+                      ? 'text-green-600 dark:text-green-400' 
+                      : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {stockData.change >= 0 ? '+' : ''}{stockData.change.toFixed(2)} ({stockData.change >= 0 ? '+' : ''}{stockData.percentChange.toFixed(2)}%)
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Prediction content */}
           <div className="px-4 py-6 sm:px-6">
-            {loading ? (
+            {(loading || stockLoading) ? (
               <div className="flex justify-center items-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
                 <span className="ml-3 text-gray-600 dark:text-gray-400">Loading prediction...</span>
               </div>
-            ) : error ? (
+            ) : (error || stockError) ? (
               <div className="text-center py-12">
                 <p className="text-red-500 dark:text-red-400 mb-4">Failed to load prediction data</p>
                 <button
-                  onClick={refreshPrediction}
+                  onClick={refreshAllData}
                   className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
                 >
                   Try Again
@@ -114,7 +163,7 @@ const PredictionsPage: React.FC = () => {
                       <div>
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white">{activeSymbol} Prediction</h2>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Last updated: {prediction ? new Date(prediction.lastUpdated).toLocaleString() : 'N/A'}
+                          Last updated: {prediction ? formatLastUpdated(prediction.lastUpdated) : 'N/A'}
                         </p>
                       </div>
                       
@@ -129,7 +178,7 @@ const PredictionsPage: React.FC = () => {
                     <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-inner">
                       <div>
                         <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Current Price</div>
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white">${prediction?.price.toFixed(2) || 'N/A'}</div>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">${stockData?.price.toFixed(2) || 'N/A'}</div>
                       </div>
                       <div className="flex flex-col items-end">
                         <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Predicted Price ({prediction?.timeFrame})</div>
@@ -227,11 +276,11 @@ const PredictionsPage: React.FC = () => {
                                 ${prediction.technicalIndicators.sma.toFixed(2)}
                               </div>
                               <div className={`text-sm font-medium ${
-                                prediction.price > prediction.technicalIndicators.sma 
+                                stockData && prediction.technicalIndicators.sma && stockData.price > prediction.technicalIndicators.sma 
                                   ? 'text-green-600 dark:text-green-400' 
                                   : 'text-red-600 dark:text-red-400'
                               }`}>
-                                {prediction.price > prediction.technicalIndicators.sma ? 'Price above SMA' : 'Price below SMA'}
+                                {stockData && prediction.technicalIndicators.sma && stockData.price > prediction.technicalIndicators.sma ? 'Price above SMA' : 'Price below SMA'}
                               </div>
                             </div>
                           </div>
@@ -294,13 +343,13 @@ const PredictionsPage: React.FC = () => {
                     Need the latest prediction data?
                   </p>
                   <button
-                    onClick={refreshPrediction}
+                    onClick={refreshAllData}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Refresh Prediction
+                    Refresh Data
                   </button>
                 </div>
               </div>

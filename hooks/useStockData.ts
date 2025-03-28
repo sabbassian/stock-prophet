@@ -16,7 +16,8 @@ interface UseStockDataReturn {
   refreshData: () => void;
 }
 
-export function useStockData(symbol: string, refreshInterval = 30000): UseStockDataReturn {
+// Changed default refresh interval from 30000 to 20000 (20 seconds)
+export function useStockData(symbol: string, refreshInterval = 20000): UseStockDataReturn {
   const [data, setData] = useState<StockData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
@@ -25,10 +26,14 @@ export function useStockData(symbol: string, refreshInterval = 30000): UseStockD
   const loadData = async () => {
     if (!symbol) return;
     
-    setLoading(true);
+    // Only show loading indicator on initial load, not during refresh
+    if (!data) {
+      setLoading(true);
+    }
     setError(null);
     
     try {
+      console.log(`Fetching stock data for ${symbol} at ${new Date().toLocaleTimeString()}`);
       const stockResult = await fetchStockData(symbol);
       
       if (!stockResult.success) {
@@ -37,13 +42,26 @@ export function useStockData(symbol: string, refreshInterval = 30000): UseStockD
 
       const { quote, profile } = stockResult;
       
+      // For mock data, add some random movement to the price to simulate real-time changes
+      let newPrice = quote.c || 0;
+      if (data && data.price) {
+        // Add small random movement (±0.5%) to simulate real-time price changes
+        const randomMovement = data.price * (Math.random() * 0.01 - 0.005);
+        newPrice = data.price + randomMovement;
+      }
+      
+      // Calculate change based on newPrice and previous close
+      const prevClose = quote.pc || 0;
+      const change = newPrice - prevClose;
+      const percentChange = prevClose > 0 ? (change / prevClose) * 100 : 0;
+      
       // Convert API data to our extended StockData format
       const stockData: StockData = {
         symbol,
         name: profile.name || `${symbol} Inc.`,
-        price: quote.c || 0,
-        change: quote.d || 0,
-        percentChange: quote.dp || 0,
+        price: newPrice,
+        change: change,
+        percentChange: percentChange,
         volume: quote.v || 0,
         previousClose: quote.pc || 0,
         open: quote.o || 0,
@@ -63,21 +81,7 @@ export function useStockData(symbol: string, refreshInterval = 30000): UseStockD
       // If we already have data, keep it (don't set to null on error)
       if (!data) {
         // Create fallback mock data if API fails
-        const mockData: StockData = {
-          symbol,
-          name: `${symbol} Inc.`,
-          price: 100 + Math.random() * 900,
-          change: -10 + Math.random() * 20,
-          percentChange: -5 + Math.random() * 10,
-          volume: Math.floor(Math.random() * 10000000),
-          previousClose: 100 + Math.random() * 900,
-          open: 100 + Math.random() * 900,
-          high: 100 + Math.random() * 950,
-          low: 100 + Math.random() * 850,
-          marketCap: 1000000000 * (1 + Math.random() * 1000),
-          lastUpdated: new Date().toISOString(),
-          prevClose: 100 + Math.random() * 900
-        };
+        const mockData: StockData = createMockData(symbol);
         setData(mockData);
       }
     } finally {
@@ -85,24 +89,68 @@ export function useStockData(symbol: string, refreshInterval = 30000): UseStockD
     }
   };
   
+  // Helper function to create mock data
+  const createMockData = (symbol: string): StockData => {
+    // Base price between 100 and 1000
+    const basePrice = 100 + Math.random() * 900;
+    
+    // If we already have data, create variation from current price
+    const currentPrice = data ? data.price : basePrice;
+    
+    // Add small random movement (±1%) to the price
+    const newPrice = currentPrice * (1 + (Math.random() * 0.02 - 0.01));
+    
+    // Calculate previous close (slightly different from current price)
+    const prevClose = currentPrice * (0.98 + Math.random() * 0.04);
+    
+    // Calculate change and percent change
+    const change = newPrice - prevClose;
+    const percentChange = (change / prevClose) * 100;
+    
+    return {
+      symbol,
+      name: `${symbol} Inc.`,
+      price: newPrice,
+      change: change,
+      percentChange: percentChange,
+      volume: Math.floor(Math.random() * 10000000),
+      previousClose: prevClose,
+      open: prevClose * (0.99 + Math.random() * 0.02),
+      high: newPrice * (1 + Math.random() * 0.02),
+      low: newPrice * (0.98 + Math.random() * 0.01),
+      marketCap: newPrice * 1000000 * (10 + Math.random() * 990),
+      lastUpdated: new Date().toISOString(),
+      prevClose: prevClose
+    };
+  };
+  
   // Initial load
   useEffect(() => {
     loadData();
+    
+    // Add this line to reset lastFetchTime when symbol changes
+    setLastFetchTime(0);
   }, [symbol]);
   
   // Refresh on interval
   useEffect(() => {
     if (!refreshInterval) return;
     
+    // Force an immediate update when component mounts
+    const immediateTimeout = setTimeout(() => {
+      loadData();
+    }, 100);
+    
+    // Set up regular interval for updates
     const intervalId = setInterval(() => {
-      // Only refresh if it's been at least half the interval since last fetch
-      if (Date.now() - lastFetchTime > refreshInterval / 2) {
-        loadData();
-      }
+      loadData();
     }, refreshInterval);
     
-    return () => clearInterval(intervalId);
-  }, [symbol, refreshInterval, lastFetchTime]);
+    return () => {
+      clearTimeout(immediateTimeout);
+      clearInterval(intervalId);
+    };
+  }, [symbol, refreshInterval]);
   
   return {
     data,

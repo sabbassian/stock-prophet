@@ -21,7 +21,7 @@ export default function Home() {
               <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">
                 Daily Stock Picks
                 <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-                  Updated every 30 seconds
+                  Updated every 20 seconds
                 </span>
               </h1>
               

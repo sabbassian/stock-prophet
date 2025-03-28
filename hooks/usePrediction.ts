@@ -10,20 +10,26 @@ interface UsePredictionReturn {
 
 export { type PredictionData };
 
-export function usePrediction(symbol: string): UsePredictionReturn {
+export function usePrediction(symbol: string, refreshInterval = 20000): UsePredictionReturn {
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
   const fetchPrediction = async () => {
     if (!symbol) return;
     
-    setLoading(true);
+    // Only show loading on initial fetch
+    if (!prediction) {
+      setLoading(true);
+    }
     setError(null);
     
     try {
+      console.log(`Fetching prediction for ${symbol} at ${new Date().toLocaleTimeString()}`);
       const predictionData = await fetchStockPrediction(symbol);
       setPrediction(predictionData);
+      setLastFetchTime(Date.now());
     } catch (err) {
       console.error('Error fetching prediction:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch prediction data'));
@@ -91,7 +97,29 @@ export function usePrediction(symbol: string): UsePredictionReturn {
   // Initial fetch
   useEffect(() => {
     fetchPrediction();
+    // Reset lastFetchTime when symbol changes
+    setLastFetchTime(0);
   }, [symbol]);
+  
+  // Set up auto-refresh on interval
+  useEffect(() => {
+    if (!refreshInterval) return;
+    
+    // Force an immediate refresh when component mounts
+    const immediateTimeout = setTimeout(() => {
+      fetchPrediction();
+    }, 100);
+    
+    // Set up regular interval for updates
+    const intervalId = setInterval(() => {
+      fetchPrediction();
+    }, refreshInterval);
+    
+    return () => {
+      clearTimeout(immediateTimeout);
+      clearInterval(intervalId);
+    };
+  }, [symbol, refreshInterval]);
   
   return {
     prediction,
