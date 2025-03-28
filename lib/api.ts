@@ -50,6 +50,14 @@ export interface PredictionData {
   isFallback: boolean;
 }
 
+// Stock search result type
+export interface StockSearchResult {
+  symbol: string;
+  name: string;
+  type?: string;
+  currency?: string;
+}
+
 // Mock data generators
 const generateMockStockData = (symbol: string): StockData => {
   const price = 100 + Math.random() * 900;
@@ -478,4 +486,100 @@ const generateFallbackPrediction = (symbol: string) => {
     },
     isFallback: true
   };
+};
+
+// Search for stocks
+export const searchStocks = async (query: string): Promise<StockSearchResult[]> => {
+  if (!query || query.trim().length === 0) {
+    return getPopularStocks();
+  }
+  
+  try {
+    // Use Finnhub symbol lookup API
+    const response = await axios.get(
+      `https://finnhub.io/api/v1/search?q=${query}&token=${FINNHUB_API_KEY}`
+    );
+    
+    if (response.data && response.data.result && response.data.result.length > 0) {
+      // Filter for stocks only and format the response
+      return response.data.result
+        .filter((item: any) => item.type === 'Common Stock')
+        .map((item: any) => ({
+          symbol: item.symbol,
+          name: item.description || `${item.symbol} Inc.`,
+          type: item.type,
+          currency: item.currency
+        }))
+        .slice(0, 20); // Limit results to 20
+    } else {
+      // If no results from API, fall back to filtering our predefined list
+      return getPopularStocks().filter(stock => 
+        stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
+        stock.name.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+  } catch (error) {
+    console.error('Error searching stocks:', error);
+    // Fall back to filtering our predefined list
+    return getPopularStocks().filter(stock => 
+      stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
+      stock.name.toLowerCase().includes(query.toLowerCase())
+    );
+  }
+};
+
+// Return a comprehensive list of popular stocks
+const getPopularStocks = (): StockSearchResult[] => {
+  return [
+    { symbol: 'AAPL', name: 'Apple Inc.' },
+    { symbol: 'MSFT', name: 'Microsoft Corporation' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc. (Google) Class A' },
+    { symbol: 'GOOG', name: 'Alphabet Inc. (Google) Class C' },
+    { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+    { symbol: 'META', name: 'Meta Platforms Inc.' },
+    { symbol: 'TSLA', name: 'Tesla Inc.' },
+    { symbol: 'NVDA', name: 'NVIDIA Corporation' },
+    { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
+    { symbol: 'NFLX', name: 'Netflix Inc.' },
+    { symbol: 'DIS', name: 'The Walt Disney Company' },
+    { symbol: 'BAC', name: 'Bank of America Corp' },
+    { symbol: 'INTC', name: 'Intel Corporation' },
+    { symbol: 'WMT', name: 'Walmart Inc.' },
+    { symbol: 'JNJ', name: 'Johnson & Johnson' },
+    { symbol: 'V', name: 'Visa Inc.' },
+    { symbol: 'PG', name: 'Procter & Gamble Co.' },
+    { symbol: 'MA', name: 'Mastercard Inc.' },
+    { symbol: 'UNH', name: 'UnitedHealth Group Inc.' },
+    { symbol: 'HD', name: 'Home Depot Inc.' },
+    { symbol: 'PFE', name: 'Pfizer Inc.' },
+    { symbol: 'CSCO', name: 'Cisco Systems Inc.' },
+    { symbol: 'ADBE', name: 'Adobe Inc.' },
+    { symbol: 'CRM', name: 'Salesforce Inc.' },
+    { symbol: 'AMD', name: 'Advanced Micro Devices Inc.' },
+    { symbol: 'CMCSA', name: 'Comcast Corporation' },
+    { symbol: 'COST', name: 'Costco Wholesale Corporation' },
+    { symbol: 'PYPL', name: 'PayPal Holdings Inc.' },
+    { symbol: 'XOM', name: 'Exxon Mobil Corporation' },
+    { symbol: 'TMUS', name: 'T-Mobile US Inc.' },
+    { symbol: 'NKE', name: 'Nike Inc.' },
+    { symbol: 'ABNB', name: 'Airbnb Inc.' },
+    { symbol: 'AVGO', name: 'Broadcom Inc.' },
+    { symbol: 'TXN', name: 'Texas Instruments Inc.' },
+    { symbol: 'QCOM', name: 'Qualcomm Inc.' },
+    { symbol: 'SBUX', name: 'Starbucks Corporation' },
+    { symbol: 'MS', name: 'Morgan Stanley' },
+    { symbol: 'GS', name: 'Goldman Sachs Group Inc.' },
+    { symbol: 'IBM', name: 'International Business Machines Corp.' },
+    { symbol: 'UBER', name: 'Uber Technologies Inc.' },
+    { symbol: 'COIN', name: 'Coinbase Global Inc.' },
+    { symbol: 'PINS', name: 'Pinterest Inc.' },
+    { symbol: 'ZM', name: 'Zoom Video Communications Inc.' },
+    { symbol: 'ORCL', name: 'Oracle Corporation' },
+    { symbol: 'LYFT', name: 'Lyft Inc.' },
+    { symbol: 'PLTR', name: 'Palantir Technologies Inc.' },
+    { symbol: 'ROKU', name: 'Roku Inc.' },
+    { symbol: 'SQ', name: 'Block Inc.' },
+    { symbol: 'SNAP', name: 'Snap Inc.' },
+    { symbol: 'SPOT', name: 'Spotify Technology S.A.' }
+  ];
 }; 

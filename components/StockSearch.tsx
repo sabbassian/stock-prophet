@@ -1,40 +1,64 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { searchStocks, StockSearchResult } from '../lib/api';
 
 interface StockSearchProps {
   onSelect: (symbol: string) => void;
 }
 
-// Mocked stock data - this would be replaced with API calls in a real implementation
-const popularStocks = [
-  { symbol: 'AAPL', name: 'Apple Inc.' },
-  { symbol: 'MSFT', name: 'Microsoft Corporation' },
-  { symbol: 'GOOGL', name: 'Alphabet Inc.' },
-  { symbol: 'AMZN', name: 'Amazon.com Inc.' },
-  { symbol: 'META', name: 'Meta Platforms, Inc.' },
-  { symbol: 'TSLA', name: 'Tesla, Inc.' },
-  { symbol: 'NVDA', name: 'NVIDIA Corporation' },
-  { symbol: 'JPM', name: 'JPMorgan Chase & Co.' }
-];
-
 const StockSearch: React.FC<StockSearchProps> = ({ onSelect }) => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<{ symbol: string; name: string }[]>([]);
+  const [results, setResults] = useState<StockSearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Filter stocks based on search query
+  // Search for stocks when query changes
   useEffect(() => {
-    if (query.length > 0) {
-      const filteredStocks = popularStocks.filter(
-        stock => 
-          stock.symbol.toLowerCase().includes(query.toLowerCase()) || 
-          stock.name.toLowerCase().includes(query.toLowerCase())
-      );
-      setResults(filteredStocks);
-      setIsOpen(true);
-    } else {
-      setResults(popularStocks);
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
+
+    // If empty query, get popular stocks
+    if (query.length === 0) {
+      const fetchPopularStocks = async () => {
+        try {
+          const popularResults = await searchStocks('');
+          setResults(popularResults);
+        } catch (err) {
+          console.error('Error fetching popular stocks:', err);
+        }
+      };
+      
+      fetchPopularStocks();
+      return;
+    }
+
+    // Set a small delay to avoid making too many API calls while typing
+    setLoading(true);
+    timeoutRef.current = setTimeout(async () => {
+      setError(null);
+      
+      try {
+        const searchResults = await searchStocks(query);
+        setResults(searchResults);
+        setIsOpen(true);
+      } catch (err) {
+        console.error('Error searching stocks:', err);
+        setError('Failed to search stocks. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
+
+    // Clean up timeout on unmount or when query changes
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [query]);
 
   // Close dropdown when clicking outside
@@ -81,11 +105,19 @@ const StockSearch: React.FC<StockSearchProps> = ({ onSelect }) => {
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setIsOpen(true)}
             />
+            {loading && (
+              <svg className="animate-spin h-5 w-5 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
           </div>
           
           {isOpen && (
             <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
-              {results.length > 0 ? (
+              {error ? (
+                <div className="px-4 py-3 text-sm text-red-500 dark:text-red-400">{error}</div>
+              ) : results.length > 0 ? (
                 <ul className="py-1">
                   {results.map((stock) => (
                     <li 
@@ -104,7 +136,9 @@ const StockSearch: React.FC<StockSearchProps> = ({ onSelect }) => {
                   ))}
                 </ul>
               ) : (
-                <div className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">No results found</div>
+                <div className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                  {loading ? 'Searching...' : 'No results found. Try a different search term.'}
+                </div>
               )}
             </div>
           )}
