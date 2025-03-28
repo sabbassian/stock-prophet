@@ -1,94 +1,113 @@
 import React, { useState, useEffect } from 'react';
+import { useStockData } from '../hooks/useStockData';
 
 interface StockPicksProps {
   onSelect: (symbol: string) => void;
 }
 
-// Mock data for demo purposes - this would be replaced with API data in a production app
-const mockStockPicks = [
-  {
+// Top stock symbols to track
+const TOP_SYMBOLS = ['NVDA', 'MSFT', 'AAPL', 'AMZN', 'GOOGL'];
+
+// Additional data that might not be in our stock API
+interface StockPrediction {
+  symbol: string;
+  prediction: string;
+  confidence: number;
+  target: number;
+  reason: string;
+}
+
+// Mock prediction data - would be replaced with ML-based API data
+const STOCK_PREDICTIONS: Record<string, StockPrediction> = {
+  'NVDA': {
     symbol: 'NVDA',
-    name: 'NVIDIA Corporation',
-    price: 945.71,
-    change: 3.2,
     prediction: 'Strong Buy',
     confidence: 92,
     target: 1050.00,
     reason: 'AI chip demand surge, market leadership in GPUs, strong datacenter growth'
   },
-  {
+  'MSFT': {
     symbol: 'MSFT',
-    name: 'Microsoft Corporation',
-    price: 429.85,
-    change: 1.5,
     prediction: 'Buy',
     confidence: 87,
     target: 460.00,
     reason: 'Azure cloud growth, AI integration across product suite, strong enterprise demand'
   },
-  {
+  'AAPL': {
     symbol: 'AAPL',
-    name: 'Apple Inc.',
-    price: 192.42,
-    change: -0.8,
     prediction: 'Hold',
     confidence: 65,
     target: 205.00,
     reason: 'iPhone 16 upcoming launch, services revenue growth, potential AI features'
   },
-  {
+  'AMZN': {
     symbol: 'AMZN',
-    name: 'Amazon.com Inc.',
-    price: 180.75,
-    change: 2.1,
     prediction: 'Buy',
     confidence: 83,
     target: 200.00,
     reason: 'AWS acceleration, retail margin improvement, advertising growth'
   },
-  {
+  'GOOGL': {
     symbol: 'GOOGL',
-    name: 'Alphabet Inc.',
-    price: 163.22,
-    change: 0.9,
     prediction: 'Buy',
     confidence: 78,
     target: 175.00,
     reason: 'Search dominance, YouTube growth, AI advancements, cloud market share gains'
   }
-];
+};
 
 const StockPicks: React.FC<StockPicksProps> = ({ onSelect }) => {
-  const [stockPicks, setStockPicks] = useState(mockStockPicks);
-  const [loading, setLoading] = useState(false);
+  // State to store combined stock data with predictions
+  const [stockPicks, setStockPicks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // Simulate data refresh every 30 seconds
+  // Fetch data for each stock symbol with 20 second refresh
+  const stockDataResults = TOP_SYMBOLS.map(symbol => {
+    return useStockData(symbol, 20000);
+  });
+
+  // Combine stock data with predictions and update state
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLoading(true);
-      
-      // Simulate API call with timeout
-      setTimeout(() => {
-        // In a real app, this would be an API call to get the latest data
-        const updatedStocks = stockPicks.map(stock => {
-          const randomChange = (Math.random() * 2 - 1) * 2; // Range from -2% to +2%
-          const newPrice = stock.price * (1 + randomChange / 100);
+    // Check if all stock data is loaded
+    const allDataLoaded = stockDataResults.every(result => !result.loading);
+    const anyErrors = stockDataResults.some(result => result.error);
+    
+    // Update loading state
+    setLoading(!allDataLoaded || anyErrors);
+    
+    // If we have all data, build the combined view
+    if (allDataLoaded && !anyErrors) {
+      const combinedData = stockDataResults
+        .filter(result => result.data)
+        .map(result => {
+          const stockData = result.data!;
+          const symbol = stockData.symbol;
+          const prediction = STOCK_PREDICTIONS[symbol];
+          
           return {
-            ...stock,
-            price: parseFloat(newPrice.toFixed(2)),
-            change: parseFloat((stock.change + randomChange / 2).toFixed(1))
+            ...stockData,
+            prediction: prediction.prediction,
+            confidence: prediction.confidence,
+            target: prediction.target,
+            reason: prediction.reason
           };
         });
-        
-        setStockPicks(updatedStocks);
-        setLoading(false);
-        setLastUpdated(new Date());
-      }, 1000);
-    }, 30000);
+      
+      setStockPicks(combinedData);
+      setLastUpdated(new Date());
+    }
+  }, [stockDataResults.map(result => result.data)]);
 
-    return () => clearInterval(interval);
-  }, [stockPicks]);
+  // Manual refresh function
+  const refreshData = () => {
+    stockDataResults.forEach(result => {
+      if (result.refreshData) {
+        result.refreshData();
+      }
+    });
+    setLastUpdated(new Date());
+  };
 
   const getPredictionColor = (prediction: string) => {
     switch (prediction.toLowerCase()) {
@@ -126,9 +145,18 @@ const StockPicks: React.FC<StockPicksProps> = ({ onSelect }) => {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           )}
-          <span className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="text-xs text-gray-500 dark:text-gray-400 mr-3">
             Last updated: {lastUpdated.toLocaleTimeString()}
           </span>
+          <button 
+            onClick={refreshData}
+            className="text-xs text-primary-600 hover:text-primary-800 dark:text-primary-400 flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
         </div>
       </div>
       
@@ -164,8 +192,8 @@ const StockPicks: React.FC<StockPicksProps> = ({ onSelect }) => {
                   <div className="text-sm text-gray-900 dark:text-white">${stock.price.toFixed(2)}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className={`text-sm font-medium ${getChangeColor(stock.change)}`}>
-                    {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(1)}%
+                  <div className={`text-sm font-medium ${getChangeColor(stock.percentChange)}`}>
+                    {stock.percentChange >= 0 ? '+' : ''}{stock.percentChange.toFixed(2)}%
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
